@@ -1,0 +1,156 @@
+name:虚拟机
+kqlQuery:Resources
+          | where type == "microsoft.compute/virtualmachines"
+        | extend
+        vmSize=tostring(properties.hardwareProfile.vmSize),
+        osType=tostring(properties.storageProfile.osDisk.osType),
+        osName=tostring(properties.storageProfile.imageReference.offer),
+        nicId=tolower(tostring(properties.networkProfile.networkInterfaces[0].id))
+        | join kind=leftouter(
+        Resources
+        | where type == 'microsoft.compute/disks'
+        | extend
+        VMId = managedBy,
+        DiskInfo = strcat_delim('-', name, sku.name, properties.diskSizeGB)
+        ) on $left.id == $right.VMId
+        | join kind=leftouter(
+        Resources
+        | where type == 'microsoft.network/networkinterfaces'
+        | extend
+        nicId=tolower(id),
+        privateIP = tostring(properties.ipConfigurations[0].properties.privateIPAddress),
+        publicIPid = tolower(properties.ipConfigurations[0].properties.publicIPAddress.id)
+        ) on $left.nicId == $right.nicId
+        | join kind=leftouter(
+        Resources
+        | where type == 'microsoft.network/publicipaddresses'
+        | extend
+        pipId=tolower(id),
+        publicIP = tostring(properties.ipAddress)
+        ) on $left.publicIPid == $right.pipId
+        | summarize Disk = make_list(DiskInfo) by id, name, subscriptionId, location, vmSize, osType, osName,privateIP,publicIP
+        | project name, subscriptionId, location, vmSize, osType, osName, privateIP, publicIP, Disk
+        | order by tolower(name) asc
+---
+name:Redis
+kqlQuery:resources
+| where type == "microsoft.cache/redis"
+| project name, subscriptionId, location, hostName=properties.hostName, sku=strcat(properties.sku.family, properties.sku.capacity), shardCount=properties.shardCount, sslPort=properties.sslPort, nonSslPort=properties.port, enableNonSslPort=properties.enableNonSslPort, redisVersion=properties.redisVersion, staticIp=properties.staticIp
+| order by tolower(name) asc
+---
+name:MySQL
+kqlQuery:resources
+| where type == "microsoft.dbformysql/servers"
+| project name, subscriptionId, location, sku=strcat_delim('-', sku.name, sku.tier), capacity=sku.capacity, storageMB=properties.storageProfile.storageMB, version=properties.version, url=properties.fullyQualifiedDomainName, adminUsername=properties.administratorLogin
+| order by tolower(name) asc
+---
+name:虚拟机规模集
+kqlQuery:resources
+| where type == "microsoft.compute/virtualmachinescalesets"
+| project name, subscriptionId, location, resourceGroup, sku=sku.name, capacity=sku.capacity
+| order by tolower(name) asc
+---
+name:硬盘
+kqlQuery:resources
+| where type == "microsoft.compute/disks"
+| project name, subscriptionId, location, managedBy, status=properties.diskState, sku.name, diskSize=properties.diskSizeGB, iops=properties.diskIOPSReadWrite, mbps=properties.diskMBpsReadWrite, tier=properties.tier
+| order by tolower(name) asc
+---
+name:可用性集
+kqlQuery:resources
+| where type == "microsoft.compute/availabilitysets"
+| project name, subscriptionId, location, sku=sku.name, FaultDomainCount=properties.platformFaultDomainCount, UpdateDomainCount=properties.platformUpdateDomainCount
+| order by tolower(name) asc
+---
+name:容器注册表
+kqlQuery:resources
+| where type == "microsoft.containerregistry/registries"
+| project name, subscriptionId, location, sku=sku.name, addr=properties.loginServer
+| order by tolower(name) asc
+---
+name:AKS
+kqlQuery:resources
+| where type == "microsoft.containerservice/managedclusters"
+| project name, subscriptionId, location
+| order by tolower(name) asc
+---
+name:应用程序网关
+kqlQuery:resources
+| where type == "microsoft.network/applicationgateways"
+| project name, subscriptionId, location, sku=sku.name
+| order by tolower(name) asc
+---
+name:负载均衡器
+kqlQuery:resources
+| where type == "microsoft.network/loadbalancers"
+| project name, subscriptionId, location, sku=sku.name
+| order by tolower(name) asc
+---
+name:NAT网关
+kqlQuery:resources
+| where type == "microsoft.network/natgateways"
+| project name, subscriptionId, location, sku=sku.name
+| order by tolower(name) asc
+---
+name:网络安全组
+kqlQuery:resources
+| where type == "microsoft.network/networksecuritygroups"
+| project name, subscriptionId, location
+| order by tolower(name) asc
+---
+name:专用DNS区域
+kqlQuery:resources
+| where type == "microsoft.network/privatednszones"
+| project name, subscriptionId, location
+| order by tolower(name) asc
+---
+name:专用终结点
+kqlQuery:resources
+| where type == "microsoft.network/privateendpoints"
+| extend 
+	jId=tolower(properties.privateLinkServiceConnections[0].properties.privateLinkServiceId)
+| join kind=leftouter(
+    resources
+    | where type == 'microsoft.dbformysql/servers' or type == "microsoft.cache/redis"
+    | extend 
+        jId = tolower(id),
+		jName=tostring(name)
+) on $left.jId == $right.jId
+| project name, subscriptionId, location, jName
+| order by tolower(name) asc
+---
+name:公共IP地址
+kqlQuery:resources
+| where type == "microsoft.network/publicipaddresses"
+| project name, subscriptionId, location, sku=sku.name, AllocationMethod=properties.publicIPAllocationMethod, IPAddressVersion=properties.publicIPAddressVersion, ipAddress=properties.ipAddress
+| order by tolower(name) asc
+---
+name:TrafficManager
+kqlQuery:resources
+| where type == "microsoft.network/trafficmanagerprofiles"
+| project name, subscriptionId, location, dnsConfig=properties.dnsConfig.fqdn
+| order by tolower(name) asc
+---
+name:虚拟网络网关
+kqlQuery:resources
+| where type == "microsoft.network/virtualnetworkgateways"
+| project name, subscriptionId, location
+| order by tolower(name) asc
+---
+name:虚拟网络
+kqlQuery:resources
+| where type == "microsoft.network/virtualnetworks"
+| project name, subscriptionId, location, ipAddr=properties.addressSpace.addressPrefixes
+| order by tolower(name) asc
+---
+name:LogAnalytics
+kqlQuery:resources
+| where type == "microsoft.operationalinsights/workspaces"
+| project name, subscriptionId, location, sku=properties.sku.name, retentionInDays=properties.retentionInDays
+| order by tolower(name) asc
+---
+name:存储账户
+kqlQuery:resources
+| where type == "microsoft.storage/storageaccounts"
+| project name, subscriptionId, location, sku=sku.name, kind, accessTier=properties.accessTier
+| order by tolower(name) asc

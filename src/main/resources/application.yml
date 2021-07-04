@@ -1,0 +1,9 @@
+logging:
+  config: classpath:log4j2.xml
+file-name:
+  prefix: AzResourceExport
+  date-format: yyyyMMddHHmmss
+azure:
+  subscription-id: xxxx-xxxx
+kql-config:
+  file-name: kqlConfig
