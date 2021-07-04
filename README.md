@@ -1,6 +1,6 @@
-# AzResourceGraphSelectQuery
+# AzResourceGraphQueryExport
 
-Azure Resource Graph查询结果导出为Excel文件
+将Azure Resource Graph查询结果导出为Excel文件
 
 ## 用法
 
