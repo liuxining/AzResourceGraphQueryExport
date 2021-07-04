@@ -4,6 +4,7 @@ file-name:
   prefix: AzResourceExport
   date-format: yyyyMMddHHmmss
 azure:
-  subscription-id: xxxx-xxxx
+  subscription-id:
+    - xxxx
 kql-config:
-  file-name: kqlConfig
+  file-name: kqlConfig2

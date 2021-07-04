@@ -1,6 +1,7 @@
 package cn.liuxining.azresourcegraphquery.service.impl;
 
 import cn.liuxining.azresourcegraphquery.bean.KqlBean;
+import cn.liuxining.azresourcegraphquery.config.KqlQueryConfig;
 import cn.liuxining.azresourcegraphquery.service.QueryService;
 import cn.liuxining.azresourcegraphquery.util.PatternUtil;
 import com.azure.core.management.AzureEnvironment;
@@ -10,6 +11,9 @@ import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.resourcemanager.resourcegraph.ResourceGraphManager;
 import com.azure.resourcemanager.resourcegraph.models.QueryRequest;
 import com.azure.resourcemanager.resourcegraph.models.QueryResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -26,24 +30,35 @@ import java.util.*;
 @Service
 public class QueryServiceImpl implements QueryService {
 
-    @Value("${azure.subscription-id}")
-    private String subscriptionId;
+    private static final Logger log = LoggerFactory.getLogger(QueryServiceImpl.class);
+
+    @Autowired
+    private KqlQueryConfig kqlQueryConfig;
 
     @Override
     public Map<String, List<Map<String, String>>> getData(List<KqlBean> kqlBeanList) {
         Map<String, List<Map<String, String>>> result = new HashMap<>(kqlBeanList.size());
 
-        List<String> listSubscriptionIds = Arrays.asList(subscriptionId);
+        log.info("subscriptionIdList: {}.", kqlQueryConfig.getSubscriptionId());
+
+
         AzureProfile azureProfile = new AzureProfile(AzureEnvironment.AZURE_CHINA);
         DefaultAzureCredential azureCredential = new DefaultAzureCredentialBuilder().build();
         ResourceGraphManager manager = ResourceGraphManager.authenticate(azureCredential, azureProfile);
 
 
         for (KqlBean kqlBean:kqlBeanList) {
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                log.error("未知异常", e);
+            }
+
             String strQuery = kqlBean.getKqlQuery();
 
             QueryRequest queryRequest = new QueryRequest()
-                    .withSubscriptions(listSubscriptionIds)
+                    .withSubscriptions(kqlQueryConfig.getSubscriptionId())
                     .withQuery(strQuery);
 
             QueryResponse response = manager.resourceProviders().resources(queryRequest);
